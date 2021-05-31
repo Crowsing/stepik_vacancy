@@ -14,14 +14,19 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, re_path
+from django.urls import path
 
-from vacancy.views import cat_view, companies_view, vacancy_view, main_view
+from vacancy.views import MainView, CatView, CompanyView, VacanciesView, VacancyView, custom_handler404, \
+    custom_handler500
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', main_view, name='main_view'),
-    path('vacancies/cat/<str:vacancies_cat>/', cat_view, name='cat_view'),
-    path('companies/<int:company_id>/', companies_view, name='companies_view'),
-    re_path(r'^vacancies/?(?P<vacancy_id>\d*)?/$', vacancy_view, name='vacancy_view')
+    path('', MainView.as_view(), name='main_view'),
+    path('vacancies/cat/<str:vacancy_cat>/', CatView.as_view(), name='cat_view'),
+    path('companies/<int:company_id>/', CompanyView.as_view(), name='companies_view'),
+    path('vacancies/', VacanciesView.as_view(), name='vacancies_view'),
+    path('vacancies/<int:pk>/', VacancyView.as_view(), name='vacancy_view'),
 ]
+
+handler404 = custom_handler404
+handler500 = custom_handler500

@@ -1,57 +1,77 @@
-from django.http import Http404
-from django.shortcuts import render
+from django.db.models import Count
+from django.http import HttpResponseNotFound, HttpResponseServerError
+from django.shortcuts import get_object_or_404
+from django.views.generic import TemplateView, ListView, DetailView
 
 from vacancy.models import Specialty, Company, Vacancy
-from vacancy.scripts.get_count import get_count_vacancies, get_count_companies
 
 
-def main_view(request):
-    context = {
-        'specialties': Specialty.objects.all(),
-        'companies': Company.objects.all(),
-        'count_vacancies': get_count_vacancies(),
-        'count_companies': get_count_companies()
-    }
-    return render(request, 'vacancy/index.html', context=context)
+class MainView(TemplateView):
+    template_name = "vacancy/index.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(MainView, self).get_context_data(**kwargs)
+        context['specialties'] = Specialty.objects.annotate(vacancies_count=Count('vacancies'))
+        context['companies'] = Company.objects.annotate(companies_count=Count('vacancies'))
+
+        return context
 
 
-def cat_view(request, vacancies_cat):
-    correct_vacancies_cat = Specialty.objects.filter(code=vacancies_cat).exists()
+class CatView(ListView):
+    model = Vacancy
+    context_object_name = 'vacancies'
+    template_name = 'vacancy/vacancies.html'
 
-    if correct_vacancies_cat:
-        return render(request, 'vacancy/vacancies.html', context={
-                                'vacancy_cat': vacancies_cat,
-                                'vacancies': Vacancy.objects.filter(specialty__code=vacancies_cat)
-                            }
-                      )
-    else:
-        raise Http404
+    def get_queryset(self):
+        return (
+            self.model.objects
+            .filter(specialty__code=self.kwargs['vacancy_cat'])
+            .select_related('specialty', 'company')
+        )
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['vacancy_title'] = get_object_or_404(Specialty, code=self.kwargs['vacancy_cat'])
 
-def companies_view(request, company_id):
-    correct_company_id = Company.objects.filter(company_id=company_id).exists()
-
-    if correct_company_id:
-        return render(request, 'vacancy/company.html', context={
-                            'company': Company.objects.filter(company_id=company_id).first(),
-                            'vacancies_by_company': Vacancy.objects.filter(company_id=company_id)
-                        }
-                      )
-    else:
-        raise Http404
+        return context
 
 
-def vacancy_view(request, vacancy_id):
-    if vacancy_id:
-        if Vacancy.objects.filter(vacancy_id=vacancy_id).exists():
-            return render(request, 'vacancy/vacancy.html', context={
-                                    'vacancy': Vacancy.objects.filter(vacancy_id=vacancy_id).first()
-                                }
-                          )
-        else:
-            raise Http404
+class CompanyView(ListView):
+    model = Vacancy
+    context_object_name = 'vacancies'
+    template_name = 'vacancy/company.html'
 
-    context = {
-        'vacancies': Vacancy.objects.all(),
-    }
-    return render(request, 'vacancy/vacancies.html', context=context)
+    def get_queryset(self):
+        return (
+            self.model.objects
+            .filter(company__id=self.kwargs['company_id'])
+            .select_related('specialty', 'company')
+        )
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['company'] = get_object_or_404(Company, id=self.kwargs['company_id'])
+
+        return context
+
+
+class VacanciesView(ListView):
+    model = Vacancy
+    context_object_name = 'vacancies'
+    template_name = 'vacancy/vacancies.html'
+    queryset = model.objects.select_related('specialty', 'company')
+
+
+class VacancyView(DetailView):
+    model = Vacancy
+    context_object_name = 'vacancy'
+    template_name = 'vacancy/vacancy.html'
+    queryset = model.objects.select_related('specialty', 'company')
+
+
+def custom_handler404(request, exception):
+    return HttpResponseNotFound("404 Страница не найдена")
+
+
+def custom_handler500(request):
+    return HttpResponseServerError("500 Server Error")

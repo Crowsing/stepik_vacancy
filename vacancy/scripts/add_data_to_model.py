@@ -13,19 +13,17 @@ import vacancy.models as models
 #
 # for company in data.companies:
 #     models.Company.objects.create(
-#         company_id=company['id'],
 #         name=company['title'],
 #         location=company['location'],
-#         logo=company['logo'],
+#         logo='https://place-hold.it/100x60',
 #         description=company['description'],
 #         employee_count=company['employee_count']
 #     )
 #
 # for vacancy in data.jobs:
 #     specialty = models.Specialty.objects.filter(code=vacancy['specialty']).first()
-#     company = models.Company.objects.filter(company_id=int(vacancy['company'])).first()
+#     company = models.Company.objects.filter(id=int(vacancy['company'])).first()
 #     models.Vacancy.objects.create(
-#         vacancy_id=vacancy['id'],
 #         title=vacancy['title'],
 #         specialty=specialty,
 #         company=company,
